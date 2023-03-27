@@ -15,9 +15,9 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.topecq.salmngmtapi.domain.EmpSalary;
+import com.topecq.salmngmtapi.domain.EmpSalaryFileUploadException;
 import com.topecq.salmngmtapi.domain.ErrorResponse;
 import com.topecq.salmngmtapi.domain.InvalidRequestParamException;
-import com.topecq.salmngmtapi.domain.ResponseVO;
 import com.topecq.salmngmtapi.service.EmpSalaryService;
 
 import lombok.extern.slf4j.Slf4j;
@@ -30,27 +30,27 @@ public class EmpSalaryController {
 	private EmpSalaryService empSalService;
 	
 	@PostMapping(value = "/users/upload")
-	public ResponseEntity<ResponseVO<String>> uploadEmployeeSalary(@RequestParam("file") MultipartFile file) {
+	public ResponseEntity<?> uploadEmployeeSalary(@RequestParam("file") MultipartFile file) {
 		
 		log.info("In uploadEmployeeSalary");
 		
-		ResponseVO<String> responseVo = null;
-		
+		Map<String, String> map = new HashMap<>();
+		ErrorResponse errorResponse = null;
 		try {
-			boolean status = empSalService.uploadEmpSalary(file);
-			if(status) {
-				responseVo = new ResponseVO<String>("Success", "File Uploaded Successfully", null, HttpStatus.OK);
-			} else {
-				responseVo = new ResponseVO<String>("Failure", "File Upload rejected due to validation failure", "E001", HttpStatus.BAD_REQUEST);
-			}
+			empSalService.uploadEmpSalary(file);
+			map.put("message", "File uploaded successfully.");
 			
-		} catch (IOException e) {
-			responseVo = new ResponseVO<String>("Failure", "File Uploaded Successfully", "E005", HttpStatus.INTERNAL_SERVER_ERROR);
+		} catch (EmpSalaryFileUploadException | IOException e) {
+			errorResponse = new ErrorResponse(e.getMessage(), HttpStatus.BAD_REQUEST.getReasonPhrase(), HttpStatus.BAD_REQUEST.value());
+		}
+		
+		if(errorResponse != null) {
+			return ResponseEntity.badRequest().body(errorResponse);
 		}
 		
 		log.info("Exit uploadEmployeeSalary");
 		
-		return new ResponseEntity<>(responseVo, responseVo.getStatus());
+		return ResponseEntity.ok(map);
 	}
 
 	@GetMapping(value = "/users")

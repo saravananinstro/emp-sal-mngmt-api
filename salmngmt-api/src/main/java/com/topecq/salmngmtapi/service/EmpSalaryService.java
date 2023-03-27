@@ -11,7 +11,9 @@ import org.springframework.util.CollectionUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.topecq.salmngmtapi.domain.EmpSalary;
+import com.topecq.salmngmtapi.domain.EmpSalaryFileUploadException;
 import com.topecq.salmngmtapi.domain.InvalidRequestParamException;
+import com.topecq.salmngmtapi.service.repository.EmpSalaryFileUploadTrackerRepository;
 import com.topecq.salmngmtapi.service.repository.EmpSalaryRepository;
 import com.topecq.salmngmtapi.util.CsvUtil;
 
@@ -24,6 +26,13 @@ public class EmpSalaryService {
 	private static final String EMPTY = "";
 	private static final char DESC_ORDER_INDICATOR = '+';
 	private static final char ASC_ORDER_INDICATOR = '-';
+
+	public static final String INVALID_DATA_IN_FILE = "Processing failed due to invalid data in file.";
+	public static final String LOGIN_ALREADY_PRESENT_FOR_DIFFERENT_ID = "Processing failed due to login already present for different id";
+	public static final String EMPTY_FILE = "Processing failed due to Empty file.";
+	public static final String INVALID_FILE_FORMAT = "Processing failed due to Invalid File format, System accepts only csv file.";
+	public static final String A_FILE_IS_IN_PROCESSING_ALREADY = "A file is in processing already. Kindly upload after sometime.";
+
 	public static final String INVALID_REQUEST_PARAM_MIN_SALARY = "Invalid Request param minSalary, it should be a valid number";
 	public static final String INVALID_REQUEST_PARAM_MAX_SALARY = "Invalid Request param maxSalary, it should be a valid number";
 	public static final String INVALID_REQUEST_PARAM_OFFSET = "Invalid Request param offset, it should be a valid number";
@@ -32,31 +41,39 @@ public class EmpSalaryService {
 	
 	private static final List<String> eligibleSortBy = List.of("id","login","name","salary");
 	private static final List<Character> eligibleSortOrder = List.of(DESC_ORDER_INDICATOR,ASC_ORDER_INDICATOR);
-
 	
 	@Autowired
 	private EmpSalaryHelperService empHelper;
 	
 	@Autowired
 	private EmpSalaryRepository empSalRepo;
+
+	@Autowired
+	private EmpSalaryFileUploadTrackerRepository empSalFileUploadTrackerRepo;
 	
-	public boolean uploadEmpSalary(MultipartFile file) throws UnsupportedEncodingException, IOException {
+	public void uploadEmpSalary(MultipartFile file) throws UnsupportedEncodingException, IOException, EmpSalaryFileUploadException {
 		log.info("in uploadEmpSalary");
 		
+		long count = empSalFileUploadTrackerRepo.countByStatus("IN_PROGRESS");
+		if (count > 0) {
+			throw new EmpSalaryFileUploadException(A_FILE_IS_IN_PROCESSING_ALREADY);
+		}
+		
 		if(!CsvUtil.isCsvFile(file)) {
-			return false;
+			throw new EmpSalaryFileUploadException(INVALID_FILE_FORMAT);
 		}
 		
 		List<EmpSalary> empList = CsvUtil.parseEmpSalFile(file);
 		
-		if(CollectionUtils.isEmpty(empList) || hasInValidData(empList) || hasDuplicate(empList)) {
-			return false;
+		if(CollectionUtils.isEmpty(empList)){
+			throw new EmpSalaryFileUploadException(EMPTY_FILE);
 		}
+
+		validateEmpList(empList);
 		
-		empHelper.saveEmpList(empList);
-		log.info("Exit uploadEmpSalary");
+		validateEmpListForDuplicate(empList);
 		
-		return true;
+		empHelper.saveEmpSalary(file, empList);
 		
 	}
 
@@ -76,7 +93,7 @@ public class EmpSalaryService {
 		return userList;
 	}
 
-	private boolean hasDuplicate(List<EmpSalary> empList){
+	private void validateEmpListForDuplicate(List<EmpSalary> empList) throws EmpSalaryFileUploadException{
 		
 		for(EmpSalary emp : empList) {
 			
@@ -96,48 +113,30 @@ public class EmpSalaryService {
 							.findFirst();
 					if (!empWithSameIdInFile.isPresent() || empWithSameIdInFile.get().getLogin()
 							.equals(empWithSameLoginButDifferentIdInDb.get().getLogin())) {
-						return true;
+						throw new EmpSalaryFileUploadException(LOGIN_ALREADY_PRESENT_FOR_DIFFERENT_ID);
 					}
 				}
 
 			}
 			
-			
-			
 		}
-		
-		return false;
 		
 	}
 
-	private boolean hasInValidData(List<EmpSalary> empList) {
+	private void validateEmpList(List<EmpSalary> empList) throws EmpSalaryFileUploadException {
 		
 		for(EmpSalary emp : empList) {
-			if(emp.getId().equals(EMPTY) || emp.getLogin().equals(EMPTY) || emp.getName().equals(EMPTY) || emp.getSalaryStr().equals(EMPTY)
-					|| !isValidSalary(emp)) {
-				return true;
-			}
 			
-
-		}
-		return false;
-		
-	}
-	
-	private boolean isValidSalary(EmpSalary emp) {
-		
-		try {
+			if(emp.getId().equals(EMPTY) || emp.getLogin().equals(EMPTY) || emp.getName().equals(EMPTY) || emp.getSalaryStr().equals(EMPTY)) {
+				throw new EmpSalaryFileUploadException(INVALID_DATA_IN_FILE);
+			}
 			Double salary = Double.valueOf(emp.getSalaryStr());
 			emp.setSalary(salary);
 			if(emp.getSalary() <= 0.0) {
-				return false;
+				throw new EmpSalaryFileUploadException(INVALID_DATA_IN_FILE);
 			}
-		} catch(Exception e) {
-			log.error("Error Parsing salary", e);
-			return false;
 		}
-
-		return true;
+	
 	}
 
 	private void validateAndGetSort(String sortParam) throws InvalidRequestParamException {

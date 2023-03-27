@@ -1,6 +1,7 @@
 package com.topecq.salmngmtapi.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyChar;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -12,6 +13,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -25,7 +27,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.topecq.salmngmtapi.BaseUnitTest;
 import com.topecq.salmngmtapi.domain.EmpSalary;
+import com.topecq.salmngmtapi.domain.EmpSalaryFileUploadException;
 import com.topecq.salmngmtapi.domain.InvalidRequestParamException;
+import com.topecq.salmngmtapi.service.repository.EmpSalaryFileUploadTrackerRepository;
 import com.topecq.salmngmtapi.service.repository.EmpSalaryRepository;
 
 public class EmpSalaryServiceTest extends BaseUnitTest{
@@ -34,15 +38,35 @@ public class EmpSalaryServiceTest extends BaseUnitTest{
 	EmpSalaryRepository empSalaryRepository;
 	
 	@Mock
+	EmpSalaryFileUploadTrackerRepository empSalaryFileUploadTrackerRepository;
+	
+	@Mock
 	EmpSalaryHelperService empHelper;
 	
 	@InjectMocks
 	EmpSalaryService empService;
 
+	@Test
+	@DisplayName("File already in processing Test")
+	public void fileAlreadyInProcessingTest() throws UnsupportedEncodingException {
+		
+		String csvData = new StringBuffer().append("id, login, name, salary").append("\n")
+				.append("id1,login1,name1,100").append("\n")
+				.append("id2,login2,name2,200").toString();
+		
+		MultipartFile mockFile=new MockMultipartFile("mockFile","test.csv","text/xml",csvData.getBytes("utf-8"));
+		when(empSalaryFileUploadTrackerRepository.countByStatus(anyString())).thenReturn(1L);
+		
+		EmpSalaryFileUploadException exception = Assertions.assertThrows(EmpSalaryFileUploadException.class, () -> {
+			empService.uploadEmpSalary(mockFile);
+		});
+		Assertions.assertEquals(exception.getMessage(), EmpSalaryService.A_FILE_IS_IN_PROCESSING_ALREADY);
+		
+	}
 	
 	@Test
 	@DisplayName("Invalid File Type Test")
-	public void invalidFileTest() throws IOException {
+	public void invalidFileTest() throws UnsupportedEncodingException {
 		
 		String csvData = new StringBuffer().append("id, login, name, salary").append("\n")
 				.append("id1,login1,name1,100").append("\n")
@@ -50,9 +74,10 @@ public class EmpSalaryServiceTest extends BaseUnitTest{
 		
 		MultipartFile mockFile=new MockMultipartFile("mockFile","test.csv","text/xml",csvData.getBytes("utf-8"));
 		
-		boolean status = empService.uploadEmpSalary(mockFile);
-		
-		Assertions.assertFalse(status);
+		EmpSalaryFileUploadException exception = Assertions.assertThrows(EmpSalaryFileUploadException.class, () -> {
+			empService.uploadEmpSalary(mockFile);
+		});
+		Assertions.assertEquals(exception.getMessage(), EmpSalaryService.INVALID_FILE_FORMAT);
 		
 	}
 
@@ -64,9 +89,10 @@ public class EmpSalaryServiceTest extends BaseUnitTest{
 		
 		MultipartFile mockFile=new MockMultipartFile("mockFile","test.csv","text/csv",csvData.getBytes("utf-8"));
 		
-		boolean status = empService.uploadEmpSalary(mockFile);
-		
-		Assertions.assertFalse(status);
+		EmpSalaryFileUploadException exception = Assertions.assertThrows(EmpSalaryFileUploadException.class, () -> {
+			empService.uploadEmpSalary(mockFile);
+		});
+		Assertions.assertEquals(exception.getMessage(), EmpSalaryService.EMPTY_FILE);
 		
 	}
 	
@@ -80,9 +106,10 @@ public class EmpSalaryServiceTest extends BaseUnitTest{
 		
 		MultipartFile mockFile=new MockMultipartFile("mockFile","test.csv","text/csv",csvData.getBytes("utf-8"));
 		
-		boolean status = empService.uploadEmpSalary(mockFile);
-		
-		Assertions.assertFalse(status);
+		EmpSalaryFileUploadException exception = Assertions.assertThrows(EmpSalaryFileUploadException.class, () -> {
+			empService.uploadEmpSalary(mockFile);
+		});
+		Assertions.assertEquals(exception.getMessage(), EmpSalaryService.INVALID_DATA_IN_FILE);
 		
 	}
 	
@@ -96,9 +123,10 @@ public class EmpSalaryServiceTest extends BaseUnitTest{
 		
 		MultipartFile mockFile=new MockMultipartFile("mockFile","test.csv","text/csv",csvData.getBytes("utf-8"));
 		
-		boolean status = empService.uploadEmpSalary(mockFile);
-		
-		Assertions.assertFalse(status);
+		EmpSalaryFileUploadException exception = Assertions.assertThrows(EmpSalaryFileUploadException.class, () -> {
+			empService.uploadEmpSalary(mockFile);
+		});
+		Assertions.assertEquals(exception.getMessage(), EmpSalaryService.INVALID_DATA_IN_FILE);
 		
 	}
 	
@@ -112,9 +140,10 @@ public class EmpSalaryServiceTest extends BaseUnitTest{
 		
 		MultipartFile mockFile=new MockMultipartFile("mockFile","test.csv","text/csv",csvData.getBytes("utf-8"));
 		
-		boolean status = empService.uploadEmpSalary(mockFile);
-		
-		Assertions.assertFalse(status);
+		EmpSalaryFileUploadException exception = Assertions.assertThrows(EmpSalaryFileUploadException.class, () -> {
+			empService.uploadEmpSalary(mockFile);
+		});
+		Assertions.assertEquals(exception.getMessage(), EmpSalaryService.INVALID_DATA_IN_FILE);
 		
 	}
 
@@ -128,9 +157,10 @@ public class EmpSalaryServiceTest extends BaseUnitTest{
 		
 		MultipartFile mockFile=new MockMultipartFile("mockFile","test.csv","text/csv",csvData.getBytes("utf-8"));
 		
-		boolean status = empService.uploadEmpSalary(mockFile);
-		
-		Assertions.assertFalse(status);
+		EmpSalaryFileUploadException exception = Assertions.assertThrows(EmpSalaryFileUploadException.class, () -> {
+			empService.uploadEmpSalary(mockFile);
+		});
+		Assertions.assertEquals(exception.getMessage(), EmpSalaryService.INVALID_DATA_IN_FILE);
 		
 	}
 	
@@ -144,9 +174,10 @@ public class EmpSalaryServiceTest extends BaseUnitTest{
 		
 		MultipartFile mockFile=new MockMultipartFile("mockFile","test.csv","text/csv",csvData.getBytes("utf-8"));
 		
-		boolean status = empService.uploadEmpSalary(mockFile);
-		
-		Assertions.assertFalse(status);
+		EmpSalaryFileUploadException exception = Assertions.assertThrows(EmpSalaryFileUploadException.class, () -> {
+			empService.uploadEmpSalary(mockFile);
+		});
+		Assertions.assertEquals(exception.getMessage(), EmpSalaryService.INVALID_DATA_IN_FILE);
 		
 	}
 
@@ -165,19 +196,21 @@ public class EmpSalaryServiceTest extends BaseUnitTest{
 		List<EmpSalary> empSalaryList = List.of(emp1, emp2);
 		
 		when(empSalaryRepository.findAllByIdOrLogin(anyString(), anyString())).thenReturn(empSalaryList);
-		doNothing().when(empHelper).saveEmpList(anyList());
+		doNothing().when(empHelper).saveEmpSalary(any(), anyList());
 		
-		boolean status = empService.uploadEmpSalary(mockFile);
+		EmpSalaryFileUploadException exception = Assertions.assertThrows(EmpSalaryFileUploadException.class, () -> {
+			empService.uploadEmpSalary(mockFile);
+		});
+		Assertions.assertEquals(exception.getMessage(), EmpSalaryService.LOGIN_ALREADY_PRESENT_FOR_DIFFERENT_ID);
 		
-		Assertions.assertFalse(status);
-		verify(empHelper, times(0)).saveEmpList(anyList());
+		verify(empHelper, times(0)).saveEmpSalary(any(), anyList());
 		
 		
 	}
 	
 	@Test
 	@DisplayName("Swap Login Test")
-	public void loginSwapTest() throws IOException {
+	public void loginSwapTest() throws IOException, EmpSalaryFileUploadException {
 		
 		String csvData = new StringBuffer().append("id, login, name, salary").append("\n")
 				.append("id1,login2,name1,100").append("\n")
@@ -191,18 +224,17 @@ public class EmpSalaryServiceTest extends BaseUnitTest{
 		List<EmpSalary> empSalaryList = List.of(emp1, emp2);
 		
 		when(empSalaryRepository.findAllByIdOrLogin(anyString(), anyString())).thenReturn(empSalaryList);
-		doNothing().when(empHelper).saveEmpList(anyList());
+		doNothing().when(empHelper).saveEmpSalary(any(), anyList());
 		
-		boolean status = empService.uploadEmpSalary(mockFile);
+		empService.uploadEmpSalary(mockFile);		
 		
-		Assertions.assertTrue(status);
-		verify(empHelper, times(1)).saveEmpList(anyList());
+		verify(empHelper, times(1)).saveEmpSalary(any(), anyList());
 		
 		
 	}
 	
 	@Test
-	public void uploadEmpSalaryTest() throws IOException {
+	public void uploadEmpSalaryTest() throws IOException, EmpSalaryFileUploadException {
 		
 		String csvData = new StringBuffer().append("id, login, name, salary").append("\n")
 				.append("id1,login1,name1,100").append("\n")
@@ -211,13 +243,11 @@ public class EmpSalaryServiceTest extends BaseUnitTest{
 		MultipartFile mockFile=new MockMultipartFile("mockFile","test.csv","text/csv",csvData.getBytes("utf-8"));
 		
 		when(empSalaryRepository.findAllByIdOrLogin(anyString(), anyString())).thenReturn(new ArrayList<>());
-		doNothing().when(empHelper).saveEmpList(anyList());
+		doNothing().when(empHelper).saveEmpSalary(any(), anyList());
 		
-		boolean status = empService.uploadEmpSalary(mockFile);
+		empService.uploadEmpSalary(mockFile);
 		
-		Assertions.assertTrue(status);
-		verify(empHelper, times(1)).saveEmpList(anyList());
-		
+		verify(empHelper, times(1)).saveEmpSalary(any(), anyList());
 		
 	}
 
